@@ -1,105 +1,149 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-  class LoginPage extends StatefulWidget {
-    const LoginPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
-    @override
-    State<LoginPage> createState() => _LoginPagesState();
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+
+  final _formkey = GlobalKey();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  bool obscurePass = true;
+
+  @override
+  void dispose(){
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
-  class _LoginPagesState extends State<LoginPage> {
-    final _formkey = GlobalKey<FormState>();
-
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
-
-    bool obscurePassword = true;
-
-    @override
-    Widget build(BuildContext context) {
-      return Scaffold(
-        body: Center(
-          child: Container(
-            constraints: BoxConstraints(maxWidth: 360, maxHeight: 500),
-            child: Card(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Form(
-                  key: _formkey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      appBar: AppBar(
+        backgroundColor: Colors.grey.shade100,
+        title: Text('Login'),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: 30),
+                Card(
+                  color: Colors.white,
+                  elevation: 4,
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Form(
+                      key: _formkey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          SizedBox(height: 40),
                           Icon(
                             Icons.lock,
                             size: 90,
-                            color: Colors.blue,
+                            color: Color.fromARGB(255, 30, 86, 49),
                           ),
-
                           SizedBox(height: 20),
-
-                          Text('Login ke akun Anda'),
-
-                          SizedBox(height: 45),
-
-                          TextFormField(
+                          Text(
+                            'FIELD SURVEY',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Selamat Datang',
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 40),
+                            TextFormField(
                             controller: emailController,
                             keyboardType: TextInputType.emailAddress,
                             decoration: InputDecoration(
                               labelText: "Email",
                               prefixIcon: Icon(Icons.email),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              border: OutlineInputBorder(),
                             ),
-                            validator: (value) {
-                              if(value == null || value.isEmpty){
-                                return "Email Wajib diisi";
-                              }
-                              return null;
-                            },
                           ),
-
-                          SizedBox(height: 12),
-
+                          SizedBox(height: 20),
                           TextFormField(
                             controller: passwordController,
-                            obscureText: obscurePassword,
+                            obscureText: obscurePass,
                             decoration: InputDecoration(
                               labelText: "Password",
                               prefixIcon: Icon(Icons.password),
                               suffixIcon: IconButton(
-                                onPressed: (){
+                                onPressed: () {
                                   setState(() {
-                                    obscurePassword = !obscurePassword;
+                                    obscurePass = !obscurePass;
                                   });
                                 },
                                 icon: Icon(
-                                  obscurePassword
-                                  ?Icons.visibility
-                                  :Icons.visibility_off
+                                  obscurePass
+                                  ? Icons.visibility_off
+                                  :Icons.visibility
                                 ),
                               ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              border: OutlineInputBorder(),
                             ),
                           ),
-
-                          SizedBox(height: 20),
-
-                          
+                          SizedBox(height: 30),
+                          SizedBox(
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                context.go('/dashboard');
+                              },
+                              child: Text('Login', style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(backgroundColor: Color.fromARGB(255, 30, 86, 49)),
+                            ),
+                          ),
+                          SizedBox(height: 15),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Belum punya akun?'),
+                              SizedBox(width: 2),
+                              GestureDetector(
+                                onTap: () {
+                                  context.go('/register');
+                                },
+                                child: Text(
+                                  'Daftar',
+                                  style: TextStyle(
+                                    color: Color.fromARGB(255, 30, 86, 49),
+                                    fontWeight: FontWeight.w600
+                                  ),
+                                ),
+                              )
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  )
-                )
-              ),
-            ),
-          )
-        ),
-      );
-    }
+                    ),
+                  ),
+                ),
+              ],
+            )
+          ),
+        )
+      ),
+    );
   }
+}
