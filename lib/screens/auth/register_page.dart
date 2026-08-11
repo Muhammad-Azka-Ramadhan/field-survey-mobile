@@ -16,6 +16,7 @@ class RegisterPageState extends State<RegisterPage> {
   final phoneController = TextEditingController();
   String? selectedGender;
 
+  @override
   void dispose(){
     nameController.dispose();
     emailController.dispose();
@@ -85,7 +86,7 @@ class RegisterPageState extends State<RegisterPage> {
                         ),
                         SizedBox(height: 20),
                         DropdownButtonFormField(
-                          value: selectedGender,
+                          initialValue: selectedGender,
                           decoration: InputDecoration(
                             labelText: "Jenis Kelamin",
                             prefixIcon: Icon(Icons.wc),
@@ -140,8 +141,8 @@ class RegisterPageState extends State<RegisterPage> {
                             onPressed: (){
                               context.go('/login');
                             },
-                            child: Text('Register', style: TextStyle(color: Colors.white)),
                             style: ElevatedButton.styleFrom(backgroundColor: Color.fromARGB(255, 30, 86, 49)),
+                            child: Text('Register', style: TextStyle(color: Colors.white)),
                           ),
                         ),
                       ],

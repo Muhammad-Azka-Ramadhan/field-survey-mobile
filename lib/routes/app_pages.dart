@@ -3,6 +3,7 @@ import 'package:field_survey/routes/app_routes.dart';
 import 'package:field_survey/screens/auth/register_page.dart';
 import 'package:field_survey/screens/dashboard/dashboard.dart';
 import 'package:field_survey/screens/splash/splash_screen.dart';
+import 'package:field_survey/screens/dashboard/home_page.dart';
 import 'package:go_router/go_router.dart';
 
 class AppPages {
@@ -25,6 +26,10 @@ class AppPages {
       GoRoute(
         path: AppRoutes.register,
         builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.home,
+        builder: (context, state) => const HomePage(),
       ),
     ],
   );

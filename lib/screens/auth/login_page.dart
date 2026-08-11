@@ -108,13 +108,10 @@ class _LoginPageState extends State<LoginPage> {
                             height: 50,
                             child: ElevatedButton(
                               onPressed: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) =>  Dashboard())
-                                );
+                                context.pushReplacement('/dashboard');
                               },
-                              child: Text('Login', style: TextStyle(color: Colors.white)),
                               style: ElevatedButton.styleFrom(backgroundColor: Color.fromARGB(255, 30, 86, 49)),
+                              child: Text('Login', style: TextStyle(color: Colors.white)),
                             ),
                           ),
                           SizedBox(height: 15),
