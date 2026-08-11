@@ -1,3 +1,4 @@
+import 'package:field_survey/screens/dashboard/dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -58,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           SizedBox(height: 20),
                           Text(
-                            'FIELD SURVEY',
+                            'SELAMAT DATANG KEMBALI',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 28,
@@ -67,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'Selamat Datang',
+                            'Masuk ke Akun Anda',
                             textAlign: TextAlign.center,
                           ),
                           SizedBox(height: 40),
@@ -107,7 +108,10 @@ class _LoginPageState extends State<LoginPage> {
                             height: 50,
                             child: ElevatedButton(
                               onPressed: () {
-                                context.go('/dashboard');
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (context) =>  Dashboard())
+                                );
                               },
                               child: Text('Login', style: TextStyle(color: Colors.white)),
                               style: ElevatedButton.styleFrom(backgroundColor: Color.fromARGB(255, 30, 86, 49)),

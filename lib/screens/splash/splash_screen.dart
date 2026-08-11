@@ -28,7 +28,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Icon(
               Icons.assignment,
               size: 100,
-              color: Colors.blue,
+              color: Color.fromARGB(255, 30, 86, 49)
             ),
             SizedBox(height: 20),
             Text(
