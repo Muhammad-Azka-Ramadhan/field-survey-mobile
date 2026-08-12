@@ -1,6 +1,11 @@
 // import 'package:field_survey/screens/dashboard/dashboard.dart';
+import 'dart:convert';
+
+import 'package:field_survey/screens/dashboard/dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,11 +16,102 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
 
-  final _formkey = GlobalKey();
+  final _formkey = GlobalKey<FormState>();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+  bool isLoading = false;
   bool obscurePass = true;
+
+  Future<void> login() async{
+    if(!_formkey.currentState!.validate()){
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try{
+      final response = await http.post(
+        Uri.parse('https://sijala.biz.id/api/v1/login'),
+
+        headers: {
+          'Accept' : 'application/json',
+          'Content-Type' : 'application/json',
+        },
+        body: jsonEncode({
+          'email' : emailController.text.trim(),
+          'password' : passwordController.text,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      
+      if(response.statusCode == 200){
+        final token = data['data']['token'];
+        if(token == null){
+          throw Exception('Token tidak ditemukan');
+        }
+        final prefs = await SharedPreferences.getInstance();
+
+        await prefs.setString(
+          'token',
+          token.toString(), 
+        );
+
+        if(data['data']['user'] != null){
+          await prefs.setString(
+            'user',
+            jsonEncode(data['data']['user']),
+          );
+        }
+
+        if(!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login Berhasil'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(
+            builder: (context) => Dashboard(),
+          ),
+        );
+      }
+      else{
+        final message = 
+          data['message'] ?? 'Email atau password salah';
+
+        throw Exception(message);
+      }
+    }
+    catch (e){
+      if(!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:  Text(
+            e.toString().replaceFirst(
+              'Exception', 
+              '',
+            ),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if(mounted){
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose(){
@@ -80,6 +176,15 @@ class _LoginPageState extends State<LoginPage> {
                               prefixIcon: Icon(Icons.email),
                               border: OutlineInputBorder(),
                             ),
+                            validator: (value){
+                              if(value == null || value.trim().isEmpty){
+                                return 'Email tidak boleh kosong';
+                              }
+                              if(!value.contains('@')){
+                                return 'Format email tidak valid';
+                              }
+                              return null;
+                            },
                           ),
                           SizedBox(height: 20),
                           TextFormField(
@@ -102,16 +207,32 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               border: OutlineInputBorder(),
                             ),
+                            validator: (value){
+                              if(value == null || value.trim().isEmpty){
+                                return 'Password tidak boleh kosong';
+                              }
+                            },
                           ),
                           SizedBox(height: 30),
                           SizedBox(
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: () {
-                                context.pushReplacement('/dashboard');
-                              },
+                              onPressed: 
+                                isLoading ? null : login,
                               style: ElevatedButton.styleFrom(backgroundColor: Color.fromARGB(255, 30, 86, 49)),
-                              child: Text('Login', style: TextStyle(color: Colors.white)),
+                              child: isLoading ? SizedBox(
+                                width: 24,
+                                height: 24,
+
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : Text(
+                                'Login',
+                                style: TextStyle(color: Colors.white, fontSize: 14),
+                              ),
                             ),
                           ),
                           SizedBox(height: 15),
