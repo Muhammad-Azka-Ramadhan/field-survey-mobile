@@ -1,5 +1,9 @@
+import 'dart:convert';
+
+import 'package:field_survey/screens/auth/login_page.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+// import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -10,11 +14,13 @@ class RegisterPage extends StatefulWidget {
 
 class RegisterPageState extends State<RegisterPage> {
 
-  final _formkey = GlobalKey();
+  final _formkey = GlobalKey<FormState>();
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final phoneController = TextEditingController();
   String? selectedGender;
+
+  bool isLoading = false;
 
   @override
   void dispose(){
@@ -22,6 +28,106 @@ class RegisterPageState extends State<RegisterPage> {
     emailController.dispose();
     phoneController.dispose();
     super.dispose();
+  }
+
+  Widget buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          border: OutlineInputBorder(),
+        ),
+        validator: validator,
+      ),
+    );
+  }
+
+  Future<void> register() async{
+    if(!_formkey.currentState!.validate()){
+      return;
+    }
+
+    if(selectedGender == null){
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Silahkan pilih jenis kelamin'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    setState(() {
+      isLoading = true;
+    });
+
+    try{
+      final response = await http.post(
+        Uri.parse('https://sijala.biz.id/api/v1/register'),
+        
+        headers: {
+          'Accept' : 'application/json',
+          'Content-Type' : 'application/json'
+        },
+        body: jsonEncode({
+          'name' : nameController.text.trim(),
+          'gender' : selectedGender,
+          'email' : emailController.text.trim(),
+          'phone' : phoneController.text.trim(),
+        }),
+      );
+      final data = jsonDecode(response.body);
+
+      if(response.statusCode == 200 || response.statusCode == 201){
+        if(data['status'] == true){
+          if(!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data['message'] ?? 'Registrasi berhasil.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
+        }
+        else {
+          throw Exception(
+            data['message'] ?? 'Registrasi gagal'
+          );
+        }
+      }
+      else {
+        final message = 
+          data['message'] ?? 'Registrasi gagal';
+          throw Exception(message);
+      }
+    }
+    catch (e) {
+      if(!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('exception', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    finally {
+      if(mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -75,74 +181,100 @@ class RegisterPageState extends State<RegisterPage> {
                           textAlign: TextAlign.center,
                         ),
                         SizedBox(height: 40),
-                        TextFormField(
-                          controller: nameController,
-                          keyboardType: TextInputType.text,
-                          decoration: InputDecoration(
-                            labelText: "Nama Lengkap",
-                            prefixIcon: Icon(Icons.person),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        DropdownButtonFormField(
-                          initialValue: selectedGender,
-                          decoration: InputDecoration(
-                            labelText: "Jenis Kelamin",
-                            prefixIcon: Icon(Icons.wc),
-                            border: OutlineInputBorder(),
-                          ),
-                          items: [
-                            DropdownMenuItem(
-                              value: "Laki-laki",
-                              child: Text("Laki-laki"),
-                            ),
-                            DropdownMenuItem(
-                              value: "Perempuan",
-                              child: Text("Perempuan"),
-                            ),
-                          ],
-                          onChanged: (value){
-                            setState(() {
-                              selectedGender = value;
-                            });
-                          },
+                        
+                        buildTextField(
+                          controller: nameController, 
+                          label: 'Nama Lengkap', 
+                          icon: Icons.person,
                           validator: (value){
-                            if(value == null || value.isEmpty){
-                              return "Silahkan pilih jenis kelamin";
+                            if(value == null || value.trim().isEmpty){
+                              return 'Nama wajin diisi';
                             }
                             return null;
                           },
                         ),
-                        SizedBox(height: 20),
-                        TextFormField(
-                          controller: emailController,
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 24),
+                          child: DropdownButtonFormField(
+                            initialValue: selectedGender,
+                            decoration: InputDecoration(
+                              labelText: 'Jenis Kelamin',
+                              prefixIcon: Icon(Icons.wc),
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              DropdownMenuItem(
+                                value: 'L',
+                                child: Text('Laki-laki'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'P',
+                                child: Text('Perempuan'),
+                              )
+                            ], 
+                            onChanged: (value){
+                              setState(() {
+                                selectedGender = value;
+                              });
+                            },
+                            validator: (value) {
+                              if(value == null){
+                                return 'Jenis kelamin wajib dipilih';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        buildTextField(
+                          controller: emailController, 
+                          label: 'Email', 
+                          icon: Icons.email,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                            labelText: "Email",
-                            prefixIcon: Icon(Icons.email),
-                            border: OutlineInputBorder(),
-                          ),
+                          validator: (value){
+                            if(value == null || value.trim().isEmpty){
+                              return 'Email wajib diisi';
+                            }
+
+                            if(!value.contains('@')){
+                              return 'Format email tidak valid';
+                            }
+                            return null;
+                          }
                         ),
-                        SizedBox(height: 20),
-                        TextFormField(
-                          controller: phoneController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: "No Telepon",
-                            prefixIcon: Icon(Icons.phone),
-                            border: OutlineInputBorder(),
-                          ),
+                        buildTextField(
+                          controller: phoneController, 
+                          label: 'Nomor WhatsApp', 
+                          icon: Icons.phone,
+                          keyboardType: TextInputType.phone,
+                          validator: (value){
+                            if(value == null || value.trim().isEmpty){
+                              return 'Nomor WhatsApp wajib diisi';
+                            }
+                            return null;
+                          }
                         ),
-                        SizedBox(height: 30),
+                        SizedBox(height: 14),
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: (){
-                              context.go('/login');
-                            },
-                            style: ElevatedButton.styleFrom(backgroundColor: Color.fromARGB(255, 30, 86, 49)),
-                            child: Text('Register', style: TextStyle(color: Colors.white)),
+                            onPressed: isLoading ? null : register,
+                            child: isLoading
+                              ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : Text(
+                                'Daftar Sekarang',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color.fromARGB(255, 30, 86, 49),
+                              foregroundColor: Colors.white,
+                            ),
                           ),
                         ),
                       ],

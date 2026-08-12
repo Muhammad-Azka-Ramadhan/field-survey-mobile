@@ -1,6 +1,7 @@
 // import 'package:field_survey/screens/dashboard/dashboard.dart';
 import 'dart:convert';
 
+import 'package:field_survey/screens/auth/register_page.dart';
 import 'package:field_survey/screens/dashboard/dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -244,7 +245,13 @@ class _LoginPageState extends State<LoginPage> {
                               SizedBox(width: 2),
                               GestureDetector(
                                 onTap: () {
-                                  context.go('/register');
+                                  // context.go('/register');
+                                  Navigator.push(
+                                    context, 
+                                    MaterialPageRoute(
+                                      builder: (context) => RegisterPage()
+                                    ),
+                                  );
                                 },
                                 child: Text(
                                   'Daftar',
