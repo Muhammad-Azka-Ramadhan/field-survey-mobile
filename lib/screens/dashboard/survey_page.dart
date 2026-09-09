@@ -1,214 +1,417 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:ui';
 
-class SurveyPage extends StatelessWidget {
+import 'package:field_survey/screens/auth/login_page.dart';
+import 'package:field_survey/screens/survey/survey_detail_page.dart';
+import 'package:field_survey/screens/survey/survey_form_page.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class SurveyPage extends StatefulWidget {
   const SurveyPage({super.key});
 
   @override
+  State<SurveyPage> createState() => _SurveyPageState();
+}
+
+class _SurveyPageState extends State<SurveyPage> {
+
+  List<Map<String, dynamic>> surveys = [];
+  bool isLoading = true;
+  String? errorMessage;
+  final String apiUrl = 'https://sijala.biz.id/api/v1/surveys';
+  static const Color primaryColor = Color.fromARGB(255, 30, 86, 49);
+
+
+  @override
+  void initState(){
+    super.initState();
+    fetchSurveys();
+  }
+
+  Future<void> fetchSurveys() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      if(token.isEmpty) {
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context, 
+          MaterialPageRoute(builder: (context) => LoginPage()), 
+          (route) => false,
+        );
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        }
+      );
+
+      if (response.statusCode == 401) {
+        await prefs.remove('token');
+        await prefs.remove('user');
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context, 
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+          (route) => false,
+        );
+        return;
+      }
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        if (data['status'] == true && data['data'] is List) {
+          final List rawlist = data['data'];
+
+          setState(() {
+            surveys = rawlist
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+            isLoading = false;
+          });
+          return;
+        }
+      }
+
+      throw Exception('Gagal memuat data (kode : ${response.statusCode})');
+    }
+    catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi anda.';
+      });
+    }
+  }
+
+  Future<void> openDetail(int surveyId) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SurveyDetailPage(surveyId: surveyId)
+      ),
+    );
+
+    if (result == true && mounted) {
+      fetchSurveys();
+    }
+  }
+
+  Future<void> openAddSurvey() async {
+    final result = await Navigator.push(
+      context, 
+      MaterialPageRoute(
+        builder: (context) => SurveyFormPage(),
+      ),
+    );
+
+    if (result == true && mounted) {
+      fetchSurveys(); 
+    }
+  }
+
+  String getCategoryName(Map<String, dynamic> survey) {
+    if (survey['category_name'] != null &&
+        survey['category_name'].toString().isNotEmpty) {
+      return survey['category_name'].toString();
+    }
+    if (survey['category'] is Map && survey['category']['name'] != null) {
+      return survey['category']['name'].toString();
+    }
+    return 'Tanpa Kategori';
+  }
+
+  String formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '-';
+    try {
+      final date = DateTime.parse(dateStr.replaceFirst(' ', 'T'));
+      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    }
+    catch (_) {
+      return dateStr;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const primaryColor = Color.fromARGB(255, 30, 86, 49);
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        title: const Text('Daftar Survey'),
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
-        title: Text('Daftar Survei Lapangan'),
-        centerTitle: true,
         elevation: 0,
       ),
-      body: ListView(
-        padding: EdgeInsets.all(20),
-        children: [
-          SizedBox(
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: Icon(Icons.add, color: Colors.white),
-              label: Text(
-                'Tambah Survei Baru',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: 24),
-
-          Text(
-            'Tugas Survei Aktif',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 12),
-
-          Card(
-            margin: EdgeInsets.only(bottom: 12),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              contentPadding: EdgeInsets.all(16),
-              leading: CircleAvatar(
-                backgroundColor: Color(0x221E5631),
-                child: Icon(Icons.map, color: Color.fromARGB(255, 30, 86, 49)),
-              ),
-              title: Text(
-                'Survei Lahan Pertanian A',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on, size: 14, color: Colors.grey),
-                      SizedBox(width: 4),
-                      Text('Kec. Sukasari, Bandung', style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                  SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                      SizedBox(width: 4),
-                      Text('10 Ags 2026', style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
-              trailing: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10,  vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Pending',
-                  style: TextStyle(
-                    color: Colors.orange,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              onTap: () {},
-            ),
-          ),
-          Card(
-            margin: EdgeInsets.only(bottom: 12),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              contentPadding: EdgeInsets.all(16),
-              leading: CircleAvatar(
-                backgroundColor: Color(0x221E5631),
-                child: Icon(Icons.map, color: Color.fromARGB(255, 30, 86, 49)),
-              ),
-              title: Text(
-                'Pendataan Pemukiman B',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on, size: 14, color: Colors.grey),
-                      SizedBox(width: 4),
-                      Text('Kec. Coblong, Bandung', style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                  SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                      SizedBox(width: 4),
-                      Text('08 Ags 2026', style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
-              trailing: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Selesai',
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              onTap: () {},
-            ),
-          ),
-          Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(16),
-              leading: const CircleAvatar(
-                backgroundColor: Color(0x221E5631),
-                child: Icon(Icons.map, color: Color.fromARGB(255, 30, 86, 49)),
-              ),
-              title: const Text(
-                'Survei Infrastruktur C',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on, size: 14, color: Colors.grey),
-                      SizedBox(width: 4),
-                      Text('Kec. Cicendo, Bandung', style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                  SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                      SizedBox(width: 4),
-                      Text('05 Ags 2026', style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
-              trailing: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Selesai',
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              onTap: () {},
-            ),
-          ),
-        ],
+      body: RefreshIndicator(
+        color: primaryColor,
+        onRefresh: fetchSurveys,
+        child: buildbody(),
       ),
+
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: openAddSurvey,
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: Text(
+          'Tambah Survey',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget buildbody() {
+    if (isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: primaryColor,),
+            SizedBox(height: 16),
+            Text(
+              'Memuat data survey...',
+              style: TextStyle(color: Color(0xFF64748B)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (errorMessage != null && surveys.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.wifi_off_rounded,
+                size: 64,
+                color: Color(0xFFEF4444),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Gagal Memuat Data',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                errorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: fetchSurveys,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (surveys.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.folder_open_rounded,
+                size: 64,
+                color: Color(0xFF94AB8),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Belum Ada Data Survey',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Tekan tombol di bawah untuk menambah survey baru.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: openAddSurvey,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.add),
+                label: Text('Tambah Survey Baru'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+      itemCount: surveys.length,
+      itemBuilder: (context, index) {
+        final survey = surveys[index];
+        final id = int.tryParse(survey['id']?.toString() ?? '') ?? 0;
+        final title = survey['title']?.toString() ?? '-';
+        final description = survey['description']?.toString() ?? '-';
+        final category = getCategoryName(survey);
+        final date = formatDate(survey['created_at']?.toString());
+        final lat = survey['latitude']?.toString() ?? '';
+        final lng = survey['longitude']?.toString() ?? '';
+
+        return Card(
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 12),
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => openDetail(id),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                category,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+                  const Divider(color: Color(0xFFE2EBF0), height: 1),
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: primaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          (lat.isNotEmpty && lng.isNotEmpty)
+                              ? '$lat, $lng'
+                              : 'Lokasi tidak tersedia',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        date,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
     );
   }
 }
