@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:field_survey/screens/auth/login_page.dart';
-import 'package:flutter/foundation.dart' show DebugPrintCallback, kDebugMode;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -21,6 +22,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isLoading = true;
   bool isUploadingPhoto = false;
   String? errorMessage;
+  Uint8List? profileImage;
 
   final Color primaryColor = const Color.fromARGB(255, 30, 86, 49);
 
@@ -112,6 +114,11 @@ class _ProfilePageState extends State<ProfilePage> {
           isLoading = false;
           errorMessage = null;
         });
+
+        if (profile != null) {
+          profileImage = await fetchProfileImage();
+        }
+        
       } else {
         if (!mounted) return;
 
@@ -213,7 +220,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://sijala.biz.id/api/v1/profile'),
+        Uri.parse('https://sijala.biz.id/api/v1/profile/update'),
       );
 
       request.headers.addAll({
@@ -231,11 +238,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
       var response = await http.Response.fromStream(streamedResponse);
 
+      debugPrint('UPLOAD STATUS: ${response.statusCode}');
+      debugPrint('UPLOAD RESPONSE: ${response.body}');
+
       // Fallback endpoint
       if (response.statusCode == 405 || response.statusCode == 404) {
         var photoRequest = http.MultipartRequest(
           'POST',
-          Uri.parse('https://sijala.biz.id/api/v1/profile/photo/image'),
+          Uri.parse('https://sijala.biz.id/api/v1/profile/photo/$imageFile.name'),
         );
 
         photoRequest.headers.addAll({
@@ -290,6 +300,29 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<Uint8List?> fetchProfileImage() async {
+  try {
+    final photo = profile?['photo']?.toString();
+
+    if (photo == null || photo.isEmpty) return null;
+
+    final response = await http.get(
+      Uri.parse('https://sijala.biz.id/api/image/$photo'),
+    );
+
+    debugPrint('FETCH IMAGE STATUS: ${response.statusCode}');
+
+    if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+      return response.bodyBytes;
+    }
+
+    return null;
+  } catch (e) {
+    debugPrint('FETCH IMAGE ERROR: $e');
+    return null;
+  }
+}
+
   // ================== FOTO PROFIL ==================
 
   Widget _buildProfilePhoto() {
@@ -309,8 +342,8 @@ class _ProfilePageState extends State<ProfilePage> {
       radius: 50,
       backgroundColor: primaryColor,
       child: ClipOval(
-        child: Image.network(
-          photo,
+        child: Image.memory(
+          profileImage ?? Uint8List(0),
           width: 100,
           height: 100,
           fit: BoxFit.cover,
@@ -351,24 +384,16 @@ class _ProfilePageState extends State<ProfilePage> {
         'gender': gender,
       };
 
-      final response = await http
-          .post(
-            Uri.parse('https://sijala.biz.id/api/v1/profile/update'),
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode(bodyData),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (kDebugMode) {
-        debugPrint('Update Status Code: ${response.statusCode}');
-
-        debugPrint('Update Response Body: ${response.body}');
-      }
-
+      final response = await http.post(
+        Uri.parse('https://sijala.biz.id/api/v1/profile/update'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(bodyData),
+      )
+      .timeout(const Duration(seconds: 15));
       Map<String, dynamic> data;
 
       try {

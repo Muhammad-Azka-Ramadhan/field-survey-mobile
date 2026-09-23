@@ -207,6 +207,7 @@ class _LoginPageState extends State<LoginPage> {
                               if(value == null || value.trim().isEmpty){
                                 return 'Password tidak boleh kosong';
                               }
+                              return null;
                             },
                           ),
                           SizedBox(height: 30),

@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             SizedBox(height: 10),
             Text(
-              'Aplikasi Mobile Berbasis Flutter',
+              'Survey Cepat dan Akurat',
               style: TextStyle(fontSize: 16),
             )
           ],
